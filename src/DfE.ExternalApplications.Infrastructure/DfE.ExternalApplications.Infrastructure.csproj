@@ -5,7 +5,8 @@
   </PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="GovUK.Dfe.CoreLibs.Security" Version="1.1.25-prerelease-11" />
+		<PackageReference Include="GovUK.Dfe.CoreLibs.Security" Version="1.1.28" />
+		<PackageReference Include="GovUK.Dfe.CoreLibs.Testing" Version="1.1.23" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.3" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.3" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.3">
@@ -15,7 +16,6 @@
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.3" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.3" />
 		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
-		<PackageReference Include="Microsoft.Identity.Web" Version="4.3.0" />
 		<PackageReference Include="Microsoft.Playwright" Version="1.49.0" />
 	</ItemGroup>
 

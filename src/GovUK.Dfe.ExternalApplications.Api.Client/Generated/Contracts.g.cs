@@ -182,6 +182,15 @@ namespace GovUK.Dfe.ExternalApplications.Api.Client.Contracts
         /// <exception cref="ExternalApplicationsException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<FileResponse> GetAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Dumps in-memory Tenants configuration as TenantConfig SQL (plaintext, no DB write).
+        /// <br/>Enable with Diagnostics:ExportTenantConfigSqlEnabled=true (or env Diagnostics__ExportTenantConfigSqlEnabled=true).
+        /// <br/>SQL is written to the container console and returned as text/plain.
+        /// </summary>
+        /// <exception cref="ExternalApplicationsException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<FileResponse> ExportTenantConfigSqlAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
