@@ -5,6 +5,7 @@ using DfE.ExternalApplications.Domain.Tenancy;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Xunit;
 
@@ -15,20 +16,26 @@ public class NotificationsPermissionHandlerTests
     private static readonly Guid TestTenantId = Guid.Parse("11111111-1111-4111-8111-111111111111");
 
     private static NotificationsPermissionHandler CreateHandler(
-        IHttpContextAccessor accessor,
+        DefaultHttpContext httpContext,
         Guid? tenantId = null)
     {
-        var tenantAccessor = Substitute.For<ITenantContextAccessor>();
         if (tenantId is not null)
         {
+            var tenantAccessor = Substitute.For<ITenantContextAccessor>();
             tenantAccessor.CurrentTenant.Returns(new TenantConfiguration(
                 tenantId.Value,
                 "Test",
                 new ConfigurationBuilder().Build(),
                 []));
+
+            var services = new ServiceCollection();
+            services.AddSingleton(tenantAccessor);
+            httpContext.RequestServices = services.BuildServiceProvider();
         }
 
-        return new NotificationsPermissionHandler(accessor, tenantAccessor);
+        var accessor = Substitute.For<IHttpContextAccessor>();
+        accessor.HttpContext.Returns(httpContext);
+        return new NotificationsPermissionHandler(accessor);
     }
 
     [Fact]
@@ -36,8 +43,6 @@ public class NotificationsPermissionHandlerTests
     {
         var requirement = new NotificationsPermissionRequirement("Read");
         var httpContext = new DefaultHttpContext();
-        var accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
         var userEmail = "user@example.com";
         var claims = new[]
         {
@@ -46,7 +51,7 @@ public class NotificationsPermissionHandlerTests
         };
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims));
         var context = new AuthorizationHandlerContext([requirement], user, null);
-        var handler = CreateHandler(accessor);
+        var handler = CreateHandler(httpContext);
 
         await handler.HandleAsync(context);
 
@@ -58,8 +63,6 @@ public class NotificationsPermissionHandlerTests
     {
         var requirement = new NotificationsPermissionRequirement("Read");
         var httpContext = new DefaultHttpContext();
-        var accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
         var userEmail = "farshad.dashti+lsrp5@education.gov.uk";
         var resourceKey = NotificationPermissionResourceKey.Create(TestTenantId, userEmail);
         var claims = new[]
@@ -69,7 +72,7 @@ public class NotificationsPermissionHandlerTests
         };
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims));
         var context = new AuthorizationHandlerContext([requirement], user, null);
-        var handler = CreateHandler(accessor, TestTenantId);
+        var handler = CreateHandler(httpContext, TestTenantId);
 
         await handler.HandleAsync(context);
 
@@ -81,8 +84,6 @@ public class NotificationsPermissionHandlerTests
     {
         var requirement = new NotificationsPermissionRequirement("Read");
         var httpContext = new DefaultHttpContext();
-        var accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
         var appId = "test-app-id";
         var claims = new[]
         {
@@ -91,7 +92,7 @@ public class NotificationsPermissionHandlerTests
         };
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims));
         var context = new AuthorizationHandlerContext([requirement], user, null);
-        var handler = CreateHandler(accessor);
+        var handler = CreateHandler(httpContext);
 
         await handler.HandleAsync(context);
 
@@ -103,8 +104,6 @@ public class NotificationsPermissionHandlerTests
     {
         var requirement = new NotificationsPermissionRequirement("Write");
         var httpContext = new DefaultHttpContext();
-        var accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
         var azp = "test-azp-id";
         var claims = new[]
         {
@@ -113,7 +112,7 @@ public class NotificationsPermissionHandlerTests
         };
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims));
         var context = new AuthorizationHandlerContext([requirement], user, null);
-        var handler = CreateHandler(accessor);
+        var handler = CreateHandler(httpContext);
 
         await handler.HandleAsync(context);
 
@@ -125,15 +124,13 @@ public class NotificationsPermissionHandlerTests
     {
         var requirement = new NotificationsPermissionRequirement("Read");
         var httpContext = new DefaultHttpContext();
-        var accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
         var claims = new[]
         {
             new Claim("permission", "Notifications:other@example.com:Read")
         };
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims));
         var context = new AuthorizationHandlerContext([requirement], user, null);
-        var handler = CreateHandler(accessor);
+        var handler = CreateHandler(httpContext);
 
         await handler.HandleAsync(context);
 
@@ -145,8 +142,6 @@ public class NotificationsPermissionHandlerTests
     {
         var requirement = new NotificationsPermissionRequirement("Write");
         var httpContext = new DefaultHttpContext();
-        var accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
         var userEmail = "user@example.com";
         var claims = new[]
         {
@@ -155,7 +150,7 @@ public class NotificationsPermissionHandlerTests
         };
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims));
         var context = new AuthorizationHandlerContext([requirement], user, null);
-        var handler = CreateHandler(accessor);
+        var handler = CreateHandler(httpContext);
 
         await handler.HandleAsync(context);
 
@@ -167,15 +162,13 @@ public class NotificationsPermissionHandlerTests
     {
         var requirement = new NotificationsPermissionRequirement("Read");
         var httpContext = new DefaultHttpContext();
-        var accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
         var claims = new[]
         {
             new Claim("permission", "Notifications:user@example.com:Read")
         };
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims));
         var context = new AuthorizationHandlerContext([requirement], user, null);
-        var handler = CreateHandler(accessor);
+        var handler = CreateHandler(httpContext);
 
         await handler.HandleAsync(context);
 
@@ -189,8 +182,6 @@ public class NotificationsPermissionHandlerTests
         var httpContext = new DefaultHttpContext();
         var applicationId = Guid.NewGuid().ToString();
         httpContext.Request.RouteValues["applicationId"] = applicationId;
-        var accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
         var userEmail = "user@example.com";
         var claims = new[]
         {
@@ -199,7 +190,7 @@ public class NotificationsPermissionHandlerTests
         };
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims));
         var context = new AuthorizationHandlerContext([requirement], user, null);
-        var handler = CreateHandler(accessor);
+        var handler = CreateHandler(httpContext);
 
         await handler.HandleAsync(context);
 
@@ -214,8 +205,6 @@ public class NotificationsPermissionHandlerTests
     {
         var requirement = new NotificationsPermissionRequirement(action);
         var httpContext = new DefaultHttpContext();
-        var accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
         var userEmail = "user@example.com";
         var claims = new[]
         {
@@ -224,7 +213,7 @@ public class NotificationsPermissionHandlerTests
         };
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims));
         var context = new AuthorizationHandlerContext([requirement], user, null);
-        var handler = CreateHandler(accessor);
+        var handler = CreateHandler(httpContext);
 
         await handler.HandleAsync(context);
 

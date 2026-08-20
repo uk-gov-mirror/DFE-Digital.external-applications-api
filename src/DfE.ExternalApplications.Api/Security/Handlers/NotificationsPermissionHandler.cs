@@ -1,6 +1,7 @@
 ﻿using DfE.ExternalApplications.Domain.Services;
 using DfE.ExternalApplications.Domain.Tenancy;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 using GovUK.Dfe.CoreLibs.Contracts.ExternalApplications.Enums;
 
@@ -10,9 +11,11 @@ namespace DfE.ExternalApplications.Api.Security.Handlers
     /// Authorization handler that checks notifications permission claims for a specific user resource.
     /// Resource keys are tenant-scoped (<c>{tenantId}:{email}</c>) with legacy email-only keys still accepted.
     /// </summary>
-    public sealed class NotificationsPermissionHandler(
-        IHttpContextAccessor accessor,
-        ITenantContextAccessor tenantContextAccessor)
+    /// <remarks>
+    /// Registered as a singleton. Tenant context is resolved from the current request scope
+    /// via <see cref="HttpContext.RequestServices"/> (not constructor-injected).
+    /// </remarks>
+    public sealed class NotificationsPermissionHandler(IHttpContextAccessor accessor)
         : AuthorizationHandler<NotificationsPermissionRequirement>
     {
         protected override Task HandleRequirementAsync(
@@ -38,7 +41,11 @@ namespace DfE.ExternalApplications.Api.Security.Handlers
             if (string.IsNullOrWhiteSpace(resourceKey))
                 return Task.CompletedTask;
 
-            var tenantId = tenantContextAccessor.CurrentTenant?.Id;
+            var tenantId = httpContext?.RequestServices?
+                .GetService<ITenantContextAccessor>()
+                ?.CurrentTenant
+                ?.Id;
+
             if (NotificationPermissionResourceKey.HasMatchingClaim(
                     context.User,
                     resourceKey,
