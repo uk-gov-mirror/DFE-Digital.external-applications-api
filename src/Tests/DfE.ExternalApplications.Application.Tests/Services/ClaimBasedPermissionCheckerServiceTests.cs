@@ -1,6 +1,9 @@
 using GovUK.Dfe.CoreLibs.Contracts.ExternalApplications.Enums;
 using DfE.ExternalApplications.Application.Services;
+using DfE.ExternalApplications.Domain.Services;
+using DfE.ExternalApplications.Domain.Tenancy;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using NSubstitute;
 using System.Security.Claims;
 
@@ -9,18 +12,26 @@ namespace DfE.ExternalApplications.Application.Tests.Services;
 public class ClaimBasedPermissionCheckerServiceTests
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ITenantContextAccessor _tenantContextAccessor;
     private readonly ClaimBasedPermissionCheckerService _service;
     private readonly HttpContext _httpContext;
     private readonly ClaimsPrincipal _user;
+    private static readonly Guid TestTenantId = Guid.Parse("11111111-1111-4111-8111-111111111111");
 
     public ClaimBasedPermissionCheckerServiceTests()
     {
         _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        _tenantContextAccessor = Substitute.For<ITenantContextAccessor>();
+        _tenantContextAccessor.CurrentTenant.Returns(new TenantConfiguration(
+            TestTenantId,
+            "Test",
+            new ConfigurationBuilder().Build(),
+            []));
         _httpContext = Substitute.For<HttpContext>();
         _user = new ClaimsPrincipal(new ClaimsIdentity());
         _httpContext.User.Returns(_user);
         _httpContextAccessor.HttpContext.Returns(_httpContext);
-        _service = new ClaimBasedPermissionCheckerService(_httpContextAccessor);
+        _service = new ClaimBasedPermissionCheckerService(_httpContextAccessor, _tenantContextAccessor);
     }
 
     [Fact]
@@ -117,7 +128,26 @@ public class ClaimBasedPermissionCheckerServiceTests
     public void Constructor_WhenHttpContextAccessorIsNull_ThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new ClaimBasedPermissionCheckerService(null!));
+        Assert.Throws<ArgumentNullException>(() => new ClaimBasedPermissionCheckerService(null!, Substitute.For<ITenantContextAccessor>()));
+    }
+
+    [Fact]
+    public void Constructor_WhenTenantContextAccessorIsNull_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => new ClaimBasedPermissionCheckerService(Substitute.For<IHttpContextAccessor>(), null!));
+    }
+
+    [Fact]
+    public void HasPermission_WhenNotificationsClaimIsTenantScoped_ReturnsTrue()
+    {
+        var email = "farshad.dashti+lsrp5@education.gov.uk";
+        var resourceKey = NotificationPermissionResourceKey.Create(TestTenantId, email);
+        var claim = new Claim("permission", $"Notifications:{resourceKey}:{AccessType.Read}");
+        _user.AddIdentity(new ClaimsIdentity([claim]));
+
+        var result = _service.HasPermission(ResourceType.Notifications, email, AccessType.Read);
+
+        Assert.True(result);
     }
 
     [Fact]
@@ -126,7 +156,7 @@ public class ClaimBasedPermissionCheckerServiceTests
         // Arrange
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         httpContextAccessor.HttpContext.Returns((HttpContext?)null);
-        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor);
+        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor, Substitute.For<ITenantContextAccessor>());
 
         // Act
         var result = service.HasPermission(ResourceType.Application, "123", AccessType.Read);
@@ -143,7 +173,7 @@ public class ClaimBasedPermissionCheckerServiceTests
         var httpContext = Substitute.For<HttpContext>();
         httpContext.User.Returns((ClaimsPrincipal?)null);
         httpContextAccessor.HttpContext.Returns(httpContext);
-        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor);
+        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor, Substitute.For<ITenantContextAccessor>());
 
         // Act
         var result = service.HasPermission(ResourceType.Application, "123", AccessType.Read);
@@ -212,7 +242,7 @@ public class ClaimBasedPermissionCheckerServiceTests
         // Arrange
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         httpContextAccessor.HttpContext.Returns((HttpContext?)null);
-        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor);
+        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor, Substitute.For<ITenantContextAccessor>());
 
         // Act
         var result = service.HasAnyPermission(ResourceType.Application, AccessType.Read);
@@ -246,7 +276,7 @@ public class ClaimBasedPermissionCheckerServiceTests
         // Arrange
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         httpContextAccessor.HttpContext.Returns((HttpContext?)null);
-        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor);
+        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor, Substitute.For<ITenantContextAccessor>());
 
         // Act
         var result = service.GetResourceIdsWithPermission(ResourceType.Application, AccessType.Read);
@@ -418,7 +448,7 @@ public class ClaimBasedPermissionCheckerServiceTests
         // Arrange
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         httpContextAccessor.HttpContext.Returns((HttpContext?)null);
-        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor);
+        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor, Substitute.For<ITenantContextAccessor>());
 
         // Act
         var result = service.IsAdmin();
@@ -435,7 +465,7 @@ public class ClaimBasedPermissionCheckerServiceTests
         var httpContext = Substitute.For<HttpContext>();
         httpContext.User.Returns((ClaimsPrincipal?)null);
         httpContextAccessor.HttpContext.Returns(httpContext);
-        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor);
+        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor, Substitute.For<ITenantContextAccessor>());
 
         // Act
         var result = service.IsAdmin();
@@ -505,7 +535,7 @@ public class ClaimBasedPermissionCheckerServiceTests
         // Arrange
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         httpContextAccessor.HttpContext.Returns((HttpContext?)null);
-        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor);
+        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor, Substitute.For<ITenantContextAccessor>());
 
         // Act
         var result = service.CanManageContributors("123");
@@ -522,7 +552,7 @@ public class ClaimBasedPermissionCheckerServiceTests
         var httpContext = Substitute.For<HttpContext>();
         httpContext.User.Returns((ClaimsPrincipal?)null);
         httpContextAccessor.HttpContext.Returns(httpContext);
-        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor);
+        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor, Substitute.For<ITenantContextAccessor>());
 
         // Act
         var result = service.CanManageContributors("123");
@@ -644,7 +674,7 @@ public class ClaimBasedPermissionCheckerServiceTests
         // Arrange
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         httpContextAccessor.HttpContext.Returns((HttpContext?)null);
-        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor);
+        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor, Substitute.For<ITenantContextAccessor>());
 
         // Act
         var result = service.IsApplicationOwner("123");
@@ -661,7 +691,7 @@ public class ClaimBasedPermissionCheckerServiceTests
         var httpContext = Substitute.For<HttpContext>();
         httpContext.User.Returns((ClaimsPrincipal?)null);
         httpContextAccessor.HttpContext.Returns(httpContext);
-        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor);
+        var service = new ClaimBasedPermissionCheckerService(httpContextAccessor, Substitute.For<ITenantContextAccessor>());
 
         // Act
         var result = service.IsApplicationOwner("123");

@@ -132,3 +132,7 @@ All notable changes to this service will be documented in this file.
 ## [1.5.2] - Filter on status fix
 ### Notes
 - Fix for the filtering not working when a null value for status is encountered in the db
+
+## [1.5.3] - Public Beta
+### Notes
+- Fix for tenant:email claim type for Notification resource

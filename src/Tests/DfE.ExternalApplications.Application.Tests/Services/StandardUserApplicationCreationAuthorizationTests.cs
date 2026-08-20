@@ -4,6 +4,7 @@ using DfE.ExternalApplications.Application.Services;
 using DfE.ExternalApplications.Domain.Common;
 using DfE.ExternalApplications.Domain.Factories;
 using DfE.ExternalApplications.Domain.Services;
+using DfE.ExternalApplications.Domain.Tenancy;
 using DfE.ExternalApplications.Domain.ValueObjects;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -79,7 +80,8 @@ public class StandardUserApplicationCreationAuthorizationTests
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         httpContextAccessor.HttpContext.Returns(httpContext);
 
-        var permissionChecker = new ClaimBasedPermissionCheckerService(httpContextAccessor);
+        var tenantContextAccessor = Substitute.For<ITenantContextAccessor>();
+        var permissionChecker = new ClaimBasedPermissionCheckerService(httpContextAccessor, tenantContextAccessor);
         var canCreate = permissionChecker.HasTemplatePermission(templateId.Value.ToString(), AccessType.Write);
 
         Assert.True(canCreate);

@@ -1,6 +1,7 @@
 using GovUK.Dfe.CoreLibs.Contracts.ExternalApplications.Enums;
 using DfE.ExternalApplications.Domain.Common;
 using DfE.ExternalApplications.Domain.Services;
+using DfE.ExternalApplications.Domain.Tenancy;
 using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
 
@@ -9,10 +10,13 @@ namespace DfE.ExternalApplications.Application.Services;
 /// <summary>
 /// Implementation of IPermissionCheckerService that checks permissions based on claims in the current user's ClaimsPrincipal
 /// </summary>
-public sealed class ClaimBasedPermissionCheckerService(IHttpContextAccessor httpContextAccessor)
+public sealed class ClaimBasedPermissionCheckerService(
+    IHttpContextAccessor httpContextAccessor,
+    ITenantContextAccessor tenantContextAccessor)
     : IPermissionCheckerService
 {
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+    private readonly ITenantContextAccessor _tenantContextAccessor = tenantContextAccessor ?? throw new ArgumentNullException(nameof(tenantContextAccessor));
 
     /// <inheritdoc />
     public bool HasPermission(ResourceType resourceType, string resourceId, AccessType accessType)
@@ -25,6 +29,15 @@ public sealed class ClaimBasedPermissionCheckerService(IHttpContextAccessor http
 
         if (accessType == AccessType.Read && IsCaseworkerReadResource(user, resourceType))
             return true;
+
+        if (resourceType == ResourceType.Notifications)
+        {
+            return NotificationPermissionResourceKey.HasMatchingClaim(
+                user,
+                resourceId,
+                accessType,
+                _tenantContextAccessor.CurrentTenant?.Id);
+        }
 
         return PermissionClaimEvaluator.HasPermissionClaim(user, resourceType, resourceId, accessType);
     }
